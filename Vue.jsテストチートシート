@@ -1,0 +1,530 @@
+# Vue.js テストコード チートシート
+
+Vue.js のテストコードを効率的に書くための実践的なチートシートです。コピペして使えるコードスニペットを中心に構成しています。
+
+## 📋 基本テンプレート
+
+### 基本的なテストファイル構造
+
+```javascript
+import { mount, shallowMount } from '@vue/test-utils'
+import Component from '@/components/Component.vue'
+
+describe('Component.vue', () => {
+  let wrapper
+
+  beforeEach(() => {
+    wrapper = mount(Component, {
+      propsData: {
+        // props here
+      },
+      mocks: {
+        // mocks here
+      }
+    })
+  })
+
+  afterEach(() => {
+    wrapper.destroy()
+  })
+
+  it('should render correctly', () => {
+    expect(wrapper.exists()).toBe(true)
+  })
+})
+```
+
+### Vue 3 対応版
+
+```javascript
+import { mount } from '@vue/test-utils'
+import Component from '@/components/Component.vue'
+
+describe('Component.vue', () => {
+  let wrapper
+
+  beforeEach(() => {
+    wrapper = mount(Component, {
+      props: {
+        // props here
+      },
+      global: {
+        mocks: {
+          // mocks here
+        }
+      }
+    })
+  })
+
+  afterEach(() => {
+    wrapper.unmount()
+  })
+
+  it('should render correctly', () => {
+    expect(wrapper.exists()).toBe(true)
+  })
+})
+```
+
+## 🎯 よく使うアサーション
+
+### 存在・表示確認
+
+```javascript
+// 要素の存在確認
+expect(wrapper.find('.class-name').exists()).toBe(true)
+expect(wrapper.find('#id-name').exists()).toBe(false)
+
+// 要素の表示・非表示
+expect(wrapper.find('.element').isVisible()).toBe(true)
+expect(wrapper.find('.hidden').isVisible()).toBe(false)
+
+// 要素数の確認
+expect(wrapper.findAll('.item').length).toBe(3)
+expect(wrapper.findAll('li')).toHaveLength(5)
+```
+
+### テキスト・属性確認
+
+```javascript
+// テキスト内容
+expect(wrapper.find('h1').text()).toBe('タイトル')
+expect(wrapper.text()).toContain('含まれる文字列')
+
+// HTML内容
+expect(wrapper.find('.content').html()).toContain('<span>')
+
+// 属性確認
+expect(wrapper.find('input').attributes('type')).toBe('text')
+expect(wrapper.find('button').attributes('disabled')).toBe('disabled')
+
+// クラス確認
+expect(wrapper.find('.button').classes()).toContain('active')
+expect(wrapper.find('.button').classes('active')).toBe(true)
+```
+
+### フォーム要素
+
+```javascript
+// input の値
+expect(wrapper.find('input').element.value).toBe('入力値')
+
+// select の選択
+expect(wrapper.find('select').element.value).toBe('option1')
+
+// checkbox の状態
+expect(wrapper.find('input[type="checkbox"]').element.checked).toBe(true)
+
+// radio の状態
+expect(wrapper.find('input[type="radio"]').element.checked).toBe(false)
+```
+
+## 🖱️ DOM操作とイベント
+
+### 基本的なイベント
+
+```javascript
+// クリックイベント
+await wrapper.find('button').trigger('click')
+
+// input イベント
+await wrapper.find('input').setValue('新しい値')
+
+// change イベント
+await wrapper.find('select').setValue('option2')
+
+// フォーム送信
+await wrapper.find('form').trigger('submit')
+
+// キーボードイベント
+await wrapper.find('input').trigger('keydown', { key: 'Enter' })
+```
+
+### フォーム操作
+
+```javascript
+// テキスト入力
+const input = wrapper.find('input[type="text"]')
+await input.setValue('テスト入力')
+
+// チェックボックス
+const checkbox = wrapper.find('input[type="checkbox"]')
+await checkbox.setChecked(true)
+
+// ラジオボタン
+const radio = wrapper.find('input[type="radio"][value="option1"]')
+await radio.setChecked()
+
+// セレクトボックス
+const select = wrapper.find('select')
+await select.setValue('option2')
+
+// 複数選択
+const options = wrapper.find('select').findAll('option')
+await options.at(1).setSelected()
+```
+
+### プルダウン操作の詳細パターン
+
+```javascript
+// プルダウンの全選択肢取得
+const options = wrapper.find('select[name="dropdown"]').findAll('option')
+
+// 特定のテキストで選択
+const targetOption = options.filter(node => node.text() === '選択したい値')
+await targetOption.at(0).setSelected()
+
+// 値で選択
+await wrapper.find('select').setValue('value1')
+
+// 選択肢の確認
+expect(options.length).toBe(5)
+expect(options.at(0).text()).toBe('オプション1')
+```
+
+## ⚡ 非同期処理
+
+### Vue の更新待ち
+
+```javascript
+// Vue の DOM 更新を待つ
+await wrapper.vm.$nextTick()
+
+// 全ての Promise を待つ
+import flushPromises from 'flush-promises'
+await flushPromises()
+
+// setTimeout などを待つ
+jest.advanceTimersByTime(1000)
+```
+
+### API呼び出しのテスト
+
+```javascript
+// API モックの設定
+const mockApiCall = jest.fn().mockResolvedValue({ data: 'test' })
+wrapper.vm.$api = { getData: mockApiCall }
+
+// メソッド実行
+await wrapper.vm.fetchData()
+
+// モックの呼び出し確認
+expect(mockApiCall).toHaveBeenCalledTimes(1)
+expect(mockApiCall).toHaveBeenCalledWith({ id: 1 })
+```
+
+## 🎭 モック・スタブ
+
+### Vuex ストアのモック
+
+```javascript
+const mockStore = {
+  getters: {
+    currentUser: () => ({ name: 'テストユーザー' }),
+    isLoggedIn: () => true
+  },
+  dispatch: jest.fn(),
+  commit: jest.fn()
+}
+
+const wrapper = mount(Component, {
+  mocks: {
+    $store: mockStore
+  }
+})
+```
+
+### Vue Router のモック
+
+```javascript
+const mockRouter = {
+  push: jest.fn(),
+  replace: jest.fn(),
+  go: jest.fn()
+}
+
+const mockRoute = {
+  params: { id: '123' },
+  query: { tab: 'profile' },
+  path: '/user/123'
+}
+
+const wrapper = mount(Component, {
+  mocks: {
+    $router: mockRouter,
+    $route: mockRoute
+  }
+})
+```
+
+### メソッドのモック
+
+```javascript
+// コンポーネントメソッドのモック
+wrapper.vm.expensiveMethod = jest.fn().mockReturnValue('mocked result')
+
+// 外部ライブラリのモック
+jest.mock('axios')
+const mockedAxios = axios as jest.Mocked<typeof axios>
+mockedAxios.get.mockResolvedValue({ data: { result: 'success' } })
+```
+
+## 🔍 よく使うセレクタパターン
+
+```javascript
+// CSS セレクタ
+wrapper.find('.class-name')
+wrapper.find('#id-name')
+wrapper.find('tag-name')
+wrapper.find('[data-test="selector"]')
+
+// 属性セレクタ
+wrapper.find('input[type="text"]')
+wrapper.find('button[disabled]')
+wrapper.find('select[name="dropdown"]')
+
+// Vue コンポーネント
+wrapper.findComponent({ name: 'ChildComponent' })
+wrapper.findComponent(ChildComponent)
+
+// 複数要素
+wrapper.findAll('.item')
+wrapper.findAll('li').at(0)
+
+// テキストで検索
+wrapper.findAll('button').filter(node => node.text() === 'クリック')
+```
+
+## 📊 コンポーネントプロパティ
+
+### Props のテスト
+
+```javascript
+// Props の確認
+expect(wrapper.vm.$props.title).toBe('テストタイトル')
+expect(wrapper.props('isActive')).toBe(true)
+
+// Props の変更
+await wrapper.setProps({ title: '新しいタイトル' })
+```
+
+### Data のテスト
+
+```javascript
+// Data の確認
+expect(wrapper.vm.loading).toBe(false)
+expect(wrapper.vm.$data.items).toHaveLength(3)
+
+// Data の変更
+await wrapper.setData({ loading: true })
+```
+
+### Computed のテスト
+
+```javascript
+// Computed の確認
+expect(wrapper.vm.computedProperty).toBe('期待値')
+
+// 依存する data を変更して computed の変化を確認
+await wrapper.setData({ baseValue: 10 })
+expect(wrapper.vm.doubledValue).toBe(20)
+```
+
+## 🚨 イベント発火のテスト
+
+### カスタムイベント
+
+```javascript
+// イベントの発火確認
+wrapper.vm.$emit('custom-event', { data: 'test' })
+expect(wrapper.emitted('custom-event')).toBeTruthy()
+expect(wrapper.emitted('custom-event')[0]).toEqual([{ data: 'test' }])
+
+// イベントの発火回数
+expect(wrapper.emitted('custom-event')).toHaveLength(2)
+
+// イベントの引数確認
+const emittedEvents = wrapper.emitted('custom-event')
+expect(emittedEvents[0][0]).toEqual({ id: 1, name: 'test' })
+```
+
+### 親コンポーネントでのイベント受信
+
+```javascript
+const parentHandler = jest.fn()
+
+const wrapper = mount(ParentComponent, {
+  listeners: {
+    'child-event': parentHandler
+  }
+})
+
+// 子コンポーネントでイベント発火
+await wrapper.findComponent(ChildComponent).vm.$emit('child-event', 'data')
+
+expect(parentHandler).toHaveBeenCalledWith('data')
+```
+
+## 🔧 デバッグ用コード
+
+```javascript
+// HTML 構造の確認
+console.log(wrapper.html())
+
+// Vue インスタンスの確認
+console.log(wrapper.vm)
+
+// 特定要素の確認
+console.log(wrapper.find('.element').element)
+
+// 全ての要素の確認
+wrapper.findAll('.item').wrappers.forEach((item, index) => {
+  console.log(`Item ${index}:`, item.text())
+})
+
+// エラー時のデバッグ情報
+try {
+  expect(wrapper.find('.not-found').exists()).toBe(true)
+} catch (error) {
+  console.log('Available elements:', wrapper.findAll('*').wrappers.map(el => el.element.tagName))
+  throw error
+}
+```
+
+## ⏱️ タイマー・時間のテスト
+
+```javascript
+// タイマーのモック
+beforeEach(() => {
+  jest.useFakeTimers()
+})
+
+afterEach(() => {
+  jest.useRealTimers()
+})
+
+// setTimeout のテスト
+wrapper.vm.startTimer()
+jest.advanceTimersByTime(1000)
+expect(wrapper.vm.timeElapsed).toBe(1)
+
+// setInterval のテスト
+jest.advanceTimersByTime(5000)
+expect(wrapper.vm.counter).toBe(5)
+```
+
+## 🎨 スタイル・CSS のテスト
+
+```javascript
+// インラインスタイル
+expect(wrapper.find('.element').element.style.display).toBe('none')
+
+// CSS クラス
+expect(wrapper.find('.button').classes()).toContain('active')
+expect(wrapper.find('.button').classes('disabled')).toBe(false)
+
+// スタイル属性
+const element = wrapper.find('.styled-element')
+expect(element.attributes('style')).toContain('color: red')
+```
+
+## 🔄 ライフサイクルフックのテスト
+
+```javascript
+// created フックのテスト
+const createdSpy = jest.spyOn(Component.options, 'created')
+mount(Component)
+expect(createdSpy).toHaveBeenCalled()
+
+// mounted フックのテスト
+const mountedSpy = jest.fn()
+mount(Component, {
+  mounted: mountedSpy
+})
+expect(mountedSpy).toHaveBeenCalled()
+
+// destroyed フックのテスト
+const destroyedSpy = jest.fn()
+wrapper = mount(Component, {
+  destroyed: destroyedSpy
+})
+wrapper.destroy()
+expect(destroyedSpy).toHaveBeenCalled()
+```
+
+## 📝 よくあるテストパターン
+
+### 条件付きレンダリング
+
+```javascript
+// v-if のテスト
+await wrapper.setData({ showElement: true })
+expect(wrapper.find('.conditional-element').exists()).toBe(true)
+
+await wrapper.setData({ showElement: false })
+expect(wrapper.find('.conditional-element').exists()).toBe(false)
+```
+
+### リストレンダリング
+
+```javascript
+// v-for のテスト
+const items = ['item1', 'item2', 'item3']
+await wrapper.setData({ items })
+
+const listItems = wrapper.findAll('.list-item')
+expect(listItems).toHaveLength(3)
+expect(listItems.at(0).text()).toBe('item1')
+```
+
+### フォームバリデーション
+
+```javascript
+// バリデーションのテスト
+const input = wrapper.find('input[type="email"]')
+await input.setValue('invalid-email')
+await input.trigger('blur')
+
+expect(wrapper.find('.error-message').exists()).toBe(true)
+expect(wrapper.find('.error-message').text()).toContain('正しいメールアドレス')
+```
+
+## 🚀 パフォーマンステスト
+
+```javascript
+// レンダリング時間の測定
+const startTime = performance.now()
+const wrapper = mount(Component)
+const endTime = performance.now()
+
+expect(endTime - startTime).toBeLessThan(100) // 100ms 以内
+
+// メモリリークの確認
+const initialMemory = process.memoryUsage().heapUsed
+// テスト実行
+wrapper.destroy()
+const finalMemory = process.memoryUsage().heapUsed
+expect(finalMemory).toBeLessThanOrEqual(initialMemory * 1.1) // 10% 以内の増加
+```
+
+## 📋 Jest 設定のクイックリファレンス
+
+```javascript
+// jest.config.js の基本設定
+module.exports = {
+  testEnvironment: 'jsdom',
+  moduleNameMapping: {
+    '^@/(.*)$': '<rootDir>/src/$1'
+  },
+  transform: {
+    '^.+\\.vue$': 'vue-jest',
+    '^.+\\.js$': 'babel-jest'
+  },
+  collectCoverageFrom: [
+    'src/**/*.{js,vue}',
+    '!src/main.js'
+  ]
+}
+```
+
+このチートシートを参考に、効率的なVue.jsテストコードを書いてください！各パターンをプロジェクトに合わせてカスタマイズして使用してください。
