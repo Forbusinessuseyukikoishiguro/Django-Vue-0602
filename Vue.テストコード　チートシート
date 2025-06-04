@@ -1,0 +1,717 @@
+Vue.js 保険商品シミュレーションページ テストコード詳細解説
+# 🚀 Vue.js テストコード チートシート
+
+## 📦 基本セットアップ
+
+### インポート文
+```javascript
+import { mount, createLocalVue } from '@vue/test-utils'
+import flushPromises from 'flush-promises'
+import MockAdapter from 'axios-mock-adapter'
+import Router from 'vue-router'
+import Vuex from 'vuex'
+import MyComponent from '@/components/MyComponent.vue'
+```
+
+### 基本的なテスト構造
+```javascript
+describe('コンポーネント名', () => {
+  let wrapper
+  let store
+  let mockAxios
+
+  beforeEach(() => {
+    // 各テスト前の初期化
+  })
+
+  afterEach(() => {
+    // 各テスト後のクリーンアップ
+  })
+
+  it('テストケース名', async () => {
+    // テスト内容
+  })
+})
+```
+
+## 🛠️ コンポーネントのマウント
+
+### シンプルなマウント
+```javascript
+wrapper = mount(MyComponent)
+```
+
+### 全部盛りマウント
+```javascript
+const localVue = createLocalVue()
+localVue.use(Router)
+localVue.use(Vuex)
+
+wrapper = mount(MyComponent, {
+  localVue,
+  propsData: { prop1: 'value' },           // props
+  mocks: { $cookies: mockCookies },        // モック
+  stubs: ['ChildComponent'],               // 子コンポーネントをスタブ化
+  store: mockStore,                        // Vuex ストア
+  router: new Router()                     // Vue Router
+})
+```
+
+## 🎯 DOM操作とイベント
+
+### 要素の取得
+```javascript
+wrapper.find('.class-name')           // クラス名で取得
+wrapper.find('#id-name')              // ID で取得
+wrapper.find('button')                // タグ名で取得
+wrapper.find('[data-testid="test"]')  // data属性で取得
+wrapper.findAll('.item')              // 複数要素を取得
+```
+
+### 入力操作
+```javascript
+// テキスト入力
+wrapper.find('input').setValue('テキスト')
+
+// チェックボックス/ラジオボタン
+wrapper.find('input[type="checkbox"]').setChecked()
+wrapper.find('input[value="option1"]').setChecked()
+
+// セレクトボックス
+wrapper.find('select').setValue('value')
+
+// クリック
+wrapper.find('button').trigger('click')
+
+// その他のイベント
+wrapper.find('input').trigger('focus')
+wrapper.find('form').trigger('submit')
+```
+
+### データ設定
+```javascript
+// コンポーネントのデータを直接変更
+wrapper.setData({ count: 5 })
+
+// props を変更
+wrapper.setProps({ message: '新しいメッセージ' })
+```
+
+## ⏰ 非同期処理の待機
+
+```javascript
+// Promise の完了を待つ
+await flushPromises()
+
+// Vue の DOM 更新を待つ
+await wrapper.vm.$nextTick()
+
+// 組み合わせパターン（よく使う）
+wrapper.find('button').trigger('click')
+await flushPromises()
+await wrapper.vm.$nextTick()
+```
+
+## 🎭 モック作成
+
+### API モック (axios)
+```javascript
+import MockAdapter from 'axios-mock-adapter'
+import api from '@/services/api'
+
+const mockAxios = new MockAdapter(api)
+
+// GET リクエストのモック
+mockAxios.onGet('/api/users').reply(200, { users: [] })
+
+// POST リクエストのモック
+mockAxios.onPost('/api/login').reply(200, { token: 'abc123' })
+
+// エラーレスポンス
+mockAxios.onGet('/api/error').reply(500, { error: 'Server Error' })
+```
+
+### 関数モック
+```javascript
+// Jest モック関数
+const mockFunction = jest.fn()
+mockFunction.mockReturnValue('戻り値')
+mockFunction.mockResolvedValue('Promise戻り値')
+
+// ブラウザ API のモック
+window.scrollTo = jest.fn()
+window.alert = jest.fn()
+```
+
+### Vuex ストアモック
+```javascript
+const mockStore = new Vuex.Store({
+  modules: {
+    user: {
+      namespaced: true,
+      state: { name: 'テストユーザー' },
+      actions: { login: jest.fn() },
+      mutations: { setUser: jest.fn() },
+      getters: { isLoggedIn: () => true }
+    }
+  }
+})
+```
+
+## ✅ アサーション（検証）
+
+### 表示/非表示の確認
+```javascript
+expect(wrapper.find('.message').exists()).toBe(true)     // 要素が存在する
+expect(wrapper.find('.error').exists()).toBe(false)     // 要素が存在しない
+expect(wrapper.find('.modal').isVisible()).toBe(true)   // 要素が表示されている
+```
+
+### テキスト内容の確認
+```javascript
+expect(wrapper.find('h1').text()).toBe('タイトル')
+expect(wrapper.find('.message').text()).toContain('成功')
+expect(wrapper.html()).toMatchSnapshot()  // スナップショットテスト
+```
+
+### 状態の確認
+```javascript
+// チェック状態
+expect(wrapper.find('input[type="checkbox"]').element.checked).toBe(true)
+
+// 入力値
+expect(wrapper.find('input').element.value).toBe('入力値')
+
+// CSS クラス
+expect(wrapper.find('.button').classes()).toContain('active')
+
+// 属性
+expect(wrapper.find('button').attributes('disabled')).toBeDefined()
+```
+
+### 関数呼び出しの確認
+```javascript
+expect(mockFunction).toHaveBeenCalled()                 // 呼び出された
+expect(mockFunction).toHaveBeenCalledTimes(2)          // 2回呼び出された
+expect(mockFunction).toHaveBeenCalledWith('引数')       // 特定の引数で呼び出された
+```
+
+## 🔄 よく使うテストパターン
+
+### ボタンクリックでAPIが呼ばれるテスト
+```javascript
+it('ボタンクリックでAPIが呼ばれる', async () => {
+  mockAxios.onPost('/api/save').reply(200, { success: true })
+  
+  wrapper.find('.save-button').trigger('click')
+  await flushPromises()
+  
+  expect(mockAxios.history.post.length).toBe(1)
+  expect(mockAxios.history.post[0].url).toBe('/api/save')
+})
+```
+
+### フォーム送信のテスト
+```javascript
+it('フォーム送信で正しいデータが送られる', async () => {
+  wrapper.find('#name').setValue('テスト太郎')
+  wrapper.find('#email').setValue('test@example.com')
+  wrapper.find('form').trigger('submit')
+  
+  await flushPromises()
+  
+  expect(wrapper.emitted('submit')).toBeTruthy()
+  expect(wrapper.emitted('submit')[0][0]).toEqual({
+    name: 'テスト太郎',
+    email: 'test@example.com'
+  })
+})
+```
+
+### 条件分岐の表示テスト
+```javascript
+it('ログイン状態によって表示が変わる', async () => {
+  // ログイン前
+  expect(wrapper.find('.login-button').exists()).toBe(true)
+  expect(wrapper.find('.logout-button').exists()).toBe(false)
+  
+  // ログイン後
+  wrapper.setData({ isLoggedIn: true })
+  await wrapper.vm.$nextTick()
+  
+  expect(wrapper.find('.login-button').exists()).toBe(false)
+  expect(wrapper.find('.logout-button').exists()).toBe(true)
+})
+```
+
+## ⚠️ トラブルシューティング
+
+### よくある問題と解決法
+
+```javascript
+// ❌ 非同期処理を待たずにテストしている
+wrapper.find('button').trigger('click')
+expect(wrapper.find('.result').text()).toBe('結果')  // 失敗
+
+// ✅ 正しい書き方
+wrapper.find('button').trigger('click')
+await flushPromises()
+await wrapper.vm.$nextTick()
+expect(wrapper.find('.result').text()).toBe('結果')  // 成功
+```
+
+```javascript
+// ❌ 要素が見つからない
+expect(wrapper.find('.not-exists').text()).toBe('text')  // エラー
+
+// ✅ 存在確認してからテスト
+if (wrapper.find('.maybe-exists').exists()) {
+  expect(wrapper.find('.maybe-exists').text()).toBe('text')
+}
+```
+
+### デバッグ用コード
+```javascript
+// HTML構造を確認
+console.log(wrapper.html())
+
+// コンポーネントのデータを確認
+console.log(wrapper.vm.$data)
+
+// 発生したイベントを確認
+console.log(wrapper.emitted())
+```
+
+## 🏆 ベストプラクティス
+
+### 1. テスト名は具体的に
+```javascript
+// ❌ 悪い例
+it('ボタンのテスト', () => {})
+
+// ✅ 良い例
+it('保存ボタンをクリックするとAPIが呼ばれてメッセージが表示される', () => {})
+```
+
+### 2. データテストIDを使用
+```javascript
+// HTML
+<button data-testid="save-button">保存</button>
+
+// テスト
+wrapper.find('[data-testid="save-button"]')
+```
+
+### 3. 共通処理は関数化
+```javascript
+const fillForm = (wrapper, data) => {
+  wrapper.find('#name').setValue(data.name)
+  wrapper.find('#email').setValue(data.email)
+}
+
+const submitAndWait = async (wrapper) => {
+  wrapper.find('form').trigger('submit')
+  await flushPromises()
+  await wrapper.vm.$nextTick()
+}
+```
+
+### 4. テストデータは外部化
+```javascript
+const testUsers = [
+  { id: 1, name: 'テスト太郎', email: 'test1@example.com' },
+  { id: 2, name: 'テスト花子', email: 'test2@example.com' }
+]
+```
+
+## 📚 便利なマッチャー一覧
+
+```javascript
+// 基本
+expect(value).toBe(expected)           // 完全一致
+expect(value).toEqual(expected)        // オブジェクトの内容一致
+expect(value).not.toBe(expected)       // 不一致
+
+// 文字列
+expect(string).toContain('部分文字列')
+expect(string).toMatch(/正規表現/)
+
+// 数値
+expect(number).toBeGreaterThan(3)      // 3より大きい
+expect(number).toBeLessThan(5)         // 5より小さい
+expect(number).toBeCloseTo(2.2, 1)     // 近似値
+
+// 配列/オブジェクト
+expect(array).toContain(item)          // 配列に要素が含まれる
+expect(object).toHaveProperty('key')   // プロパティを持つ
+
+// 関数
+expect(fn).toHaveBeenCalled()          // 呼び出された
+expect(fn).toThrow()                   // エラーをスローする
+
+// Promise
+await expect(promise).resolves.toBe(value)   // 成功時の値
+await expect(promise).rejects.toThrow()      // 失敗時のエラー
+```
+
+## 🎯 チェックリスト
+
+### テストを書く前に
+- [ ] テスト対象の機能を明確にする
+- [ ] 必要なモックデータを準備する
+- [ ] テストケースをリストアップする
+
+### テストを書く時に
+- [ ] 1つのテストで1つの機能をテストする
+- [ ] 非同期処理の待機を忘れない
+- [ ] わかりやすいテスト名をつける
+- [ ] 必要最小限のセットアップにする
+
+### テストを書いた後に
+- [ ] テストが正しく失敗することを確認
+- [ ] 不要なコンソールログを削除
+- [ ] 他のテストに影響しないか確認
+- [ ] コードレビューを受ける
+
+---
+
+**💡 コピペして使ってね！新人エンジニアの味方になるチートシートです！**
+
+ーーーーーーーーーーー
+貼り付けられたテストコードを一行ずつコメント付きで解説します！上記のアーティファクトで、貼り付けられたテストコードの主要部分を**一行ずつ詳細にコメント付きで解説**しました！
+
+## 🎯 特に重要なポイント
+
+### **1. テストの流れ**
+```
+準備 → ユーザー操作シミュレート → API呼び出し → 結果検証 → クリーンアップ
+```
+
+### **2. モック化の重要性**
+- **API呼び出し**: `mockAxios` で実際のサーバーを使わずにテスト
+- **ブラウザ機能**: `window.scrollTo` などをモック化
+- **外部依存**: 代理店情報取得などをモック化
+
+### **3. 非同期処理の制御**
+- `await flushPromises()`: Promise完了まで待機
+- `await wrapper.vm.$nextTick()`: Vue.jsのDOM更新完了まで待機
+
+### **4. ビジネスロジックのテスト**
+このテストは単純なUI表示確認ではなく、**保険業界の複雑なビジネスルール**を正確に実装できているかを確認しています：
+
+- 年齢による商品表示制御
+- 性別による商品表示制御  
+- 流入経路による初期選択商品の変更
+- 代理店設定による商品取扱の制御
+
+新人エンジニアの方は、このテストコードから **「実際のビジネス要件をコードでどう表現し、どうテストするか」** の良い例を学ぶことができます！
+
+何か特定の部分についてより詳しく知りたい箇所があれば、お気軽にお聞かせください！
+
+ーーーーーーーーーーーー
+# Vue.js 保険商品シミュレーションページ テストコード詳細解説
+
+## 📦 import文の解説
+
+```javascript
+// Vue.js のテストユーティリティをインポート
+// mount: Vueコンポーネントを実際のDOMにマウントする関数
+// createLocalVue: テスト用の独立したVueインスタンスを作成
+import { mount, createLocalVue } from '@vue/test-utils'
+
+// テスト対象のVueコンポーネントをインポート
+import G01SimulationPage from '@/pages/G01SimulationPage.vue'
+
+// 非同期処理（Promise）の完了を待つためのユーティリティ
+import flushPromises from 'flush-promises'
+
+// APIクライアント（axios）をインポート
+import api from '@/services/api'
+
+// axiosのHTTPリクエストをモック化するライブラリ
+import MockAdapter from 'axios-mock-adapter'
+
+// Vue Router（ページ遷移機能）をインポート
+import Router from 'vue-router'
+
+// Vuex（状態管理ライブラリ）をインポート
+import Vuex from 'vuex';
+```
+
+## ⚙️ 初期設定の解説
+
+```javascript
+// MockAdapterのインスタンスを作成（APIリクエストをモック化）
+const mockAxios = new MockAdapter(api)
+
+// テスト用のローカルVueインスタンスを作成
+const localVue = createLocalVue()
+
+// ローカルVueにVue Routerプラグインを追加
+localVue.use(Router)
+
+// ローカルVueにVuexプラグインを追加
+localVue.use(Vuex)
+
+// Jestのタイムアウト時間を10秒に設定（非同期処理対応）
+jest.setTimeout(10000);
+
+// ブラウザのscrollTo関数をモック化（テスト環境では不要）
+window.scrollTo = jest.fn()
+```
+
+## 🏗️ テストデータ作成関数の解説
+
+```javascript
+// 年齢計算APIのレスポンスデータを作成する関数
+const getDateCalculate = () => {
+  // 戻り値のテンプレートオブジェクトを定義
+  const tmp = {
+    result: true,           // API呼び出し成功フラグ
+    transType: '1',        // トランザクションタイプ
+    data: {
+      calcBaseDate: '2019-10-01',  // 計算基準日
+      fullAge: 20                   // 満年齢
+    }
+  }
+  // オブジェクトのディープコピーを返す（元データの変更を防ぐ）
+  return JSON.parse(JSON.stringify(tmp))
+}
+```
+
+```javascript
+// 保険料率データを作成する関数（非常に長いデータ）
+const getInsurancerates = () => {
+  const tmp = {
+    result: true,     // API成功フラグ
+    transType: '1',   // トランザクションタイプ
+    data: [           // 保険商品データの配列
+      {
+        insuranceCd: "201",           // 保険商品コード
+        amountFixedFlag: false,       // 金額固定フラグ
+        unit: 1000,                   // 単位（1000円単位）
+        benefitType: "1",             // 給付タイプ
+        benefitRate: null,            // 給付率
+        opeTypeCd: "3",              // 手術タイプコード
+        opeRate: null,               // 手術率
+        sixRate: null,               // 6大疾病率
+        cancerTreatmentBenefits: null, // がん治療給付
+        cancerDifferenceBed: null,    // がん差額ベッド
+        gender: "2",                  // 性別（2=女性）
+        age: 20,                      // 年齢
+        amount60: 500,                // 60歳時の保険料
+        amount65: 510,                // 65歳時の保険料
+        amount70: 520,                // 70歳時の保険料
+        amount75: 530,                // 75歳時の保険料
+        amount80: 540,                // 80歳時の保険料
+        amount85: 550,                // 85歳時の保険料
+        amountLife: 560,              // 終身の保険料
+        digitUnderDecimal: "3"        // 小数点以下桁数
+      },
+      // ... 他の保険商品データが続く
+    ]
+  }
+  
+  // 料率データを実際の値に変換する処理
+  for (let index in tmp.data) {
+    // 金額固定でない場合の処理
+    if (!tmp.data[index].amountFixedFlag) {
+      // 各年齢の保険料を単位で割って実際の料率を計算
+      tmp.data[index].amount60 /= tmp.data[index].unit;
+      tmp.data[index].amount70 /= tmp.data[index].unit;
+      tmp.data[index].amount75 /= tmp.data[index].unit;
+      tmp.data[index].amount80 /= tmp.data[index].unit;
+      tmp.data[index].amount85 /= tmp.data[index].unit;
+      tmp.data[index].amountLife /= tmp.data[index].unit;
+      tmp.data[index].amount65 /= tmp.data[index].unit;
+    }
+  }
+  // ディープコピーして返す
+  return JSON.parse(JSON.stringify(tmp))
+}
+```
+
+## 🎯 各テスト前の共通設定
+
+```javascript
+beforeEach(() => {
+  // Vuexストアの初期化
+  store = new Vuex.Store({
+    modules: {                    // モジュール化されたストア
+      agency: {                   // agency（代理店）モジュール
+        namespaced: true,         // 名前空間を使用
+        state: {                  // 状態
+          agency: undefined       // 代理店情報（初期値は未定義）
+        },
+        actions: {                // アクション（非同期処理）
+          getAgency: mockGetAgency, // 代理店情報取得（モック関数）
+        },
+        getters: {                // ゲッター（状態の取得）
+          agency: state => state.agency, // 代理店情報を返す
+        },
+        mutations: {              // ミューテーション（状態の変更）
+          // 代理店情報を設定
+          set: (state, payload) => { 
+            state.agency = payload.agency; 
+          },
+          // 代理店情報をクリア
+          clear: state => { 
+            state.agency = undefined; 
+          },
+        },
+      },
+    },
+  })
+  
+  // モック関数が代理店情報を返すように設定
+  // medical_rabbit_dealer_flag: 1 = メディカル兎取扱あり
+  mockGetAgency.mockResolvedValueOnce({ medical_rabbit_dealer_flag: 1 });
+});
+```
+
+## 🧪 実際のテストケースの解説
+
+```javascript
+// テストケースの説明
+it('ケース 1-1 商品選択が表示されていること(商品表示コード000「商品選択なし」、20歳以上80歳以下、男性)', async () => {
+  // テスト用の年齢を設定
+  const setFullAge = 20;
+  
+  // 設定年齢から生年月日を計算
+  const { setYear, setDate } = getDateToSet(setFullAge);
+
+  // クッキー操作のモックオブジェクト
+  const $cookies = {
+    get: jest.fn(),    // クッキー取得関数のモック
+    set: jest.fn()     // クッキー設定関数のモック
+  }
+  
+  // 年齢計算APIのレスポンスデータを準備
+  let dateCalculate = getDateCalculate()
+  dateCalculate.data.calcBaseDate = setDate;  // 計算基準日を設定
+  dateCalculate.data.fullAge = setFullAge;    // 満年齢を設定
+
+  // モックAPIのレスポンスを設定
+  // POST /date_calculate/ へのリクエストに対するレスポンス
+  mockAxios.onPost('/date_calculate/').reply(200, dateCalculate)
+  // POST /insurancerates/ へのリクエストに対するレスポンス
+  mockAxios.onPost('/insurancerates/').reply(200, getInsurancerates())
+
+  // Vueコンポーネントをマウント（実際のDOM要素として作成）
+  wrapper = mount(G01SimulationPage, {
+    localVue,                           // テスト用Vueインスタンス
+    stubs: ['PageTopButton'],           // PageTopButtonコンポーネントをスタブ化
+    mocks: { $cookies },               // モックオブジェクトを注入
+    store,                             // Vuexストアを注入
+    router: new Router()               // Vue Routerインスタンスを注入
+  })
+  
+  // URLパラメータを設定（商品表示コード000）
+  wrapper.vm.$router.push({ query: { parm4: '000' } })
+
+  // ユーザーの入力操作をシミュレート
+  wrapper.find('.birthDateYear').setValue(setYear)      // 生年を入力
+  wrapper.find('.birthDateMonth').trigger('click')      // 月選択ボタンをクリック
+  await wrapper.vm.$nextTick()                          // DOM更新を待機
+  wrapper.find('#month_1').setChecked()                 // 1月を選択
+  await wrapper.vm.$nextTick()                          // DOM更新を待機
+  wrapper.find('.birthDateDay').trigger('click')        // 日選択ボタンをクリック
+  await wrapper.vm.$nextTick()                          // DOM更新を待機
+  wrapper.find('#date_1').setChecked()                  // 1日を選択
+  await wrapper.vm.$nextTick()                          // DOM更新を待機
+  
+  // 性別選択（男性=1）
+  const radioInput = wrapper
+    .find('.gender')                    // 性別選択エリアを取得
+    .find("input[value='1']")          // 男性（値=1）のラジオボタンを取得
+  await wrapper.vm.$nextTick()         // DOM更新を待機
+  await radioInput.setChecked()        // 男性を選択
+
+  // シミュレーション実行ボタンをクリック
+  wrapper.find('.simulationBtn').trigger('click')
+  
+  // 非同期処理（API呼び出し）の完了を待機
+  await flushPromises()
+  await wrapper.vm.$nextTick()         // DOM更新を待機
+
+  // テスト結果の検証
+  // メディカル礎女性専用以外の全商品が表示されている
+  expect(wrapper.find("input[value='206']").isVisible()).toBe(true)   // メディカル礎: 表示
+  expect(wrapper.find("input[value='999']").isVisible()).toBe(false)  // メディカル兎: 非表示（男性のため）
+  expect(wrapper.find("input[value='147']").isVisible()).toBe(true)   // セブン: 表示
+  expect(wrapper.find("input[value='153']").isVisible()).toBe(true)   // ワイド: 表示
+  expect(wrapper.find("input[value='143']").isVisible()).toBe(true)   // がん一時金: 表示
+  expect(wrapper.find("input[value='215']").isVisible()).toBe(true)   // がん治療極: 表示
+  expect(wrapper.find("input[value='223']").isVisible()).toBe(true)   // なないろスリー: 表示
+  
+  // メディカル礎が選択されている
+  expect(wrapper.find("input[value='206']").element.checked).toBe(true)   // メディカル礎: 選択済み
+  expect(wrapper.find("input[value='999']").element.checked).toBe(false)  // メディカル兎: 未選択
+  expect(wrapper.find("input[value='147']").element.checked).toBe(false)  // セブン: 未選択
+  expect(wrapper.find("input[value='153']").element.checked).toBe(false)  // ワイド: 未選択
+  expect(wrapper.find("input[value='143']").element.checked).toBe(false)  // がん一時金: 未選択
+  expect(wrapper.find("input[value='215']").element.checked).toBe(false)  // がん治療極: 未選択
+  expect(wrapper.find("input[value='223']").element.checked).toBe(false)  // なないろスリー: 未選択
+  
+  // テスト終了後のクリーンアップフラグを設定
+  shouldResetParm4ToBlankor000 = true;
+})
+```
+
+## 🧹 テスト後のクリーンアップ
+
+```javascript
+afterEach(() => {
+  // 商品表示コード"000"の場合のクリーンアップ処理
+  if (shouldResetParm4ToBlankor000) {
+    // 商品表示コードなし"000"の場合は、param4=000で初期化する
+    wrapper.vm.$router.push({ query: { parm4: '000' } });
+    shouldResetParm4ToBlankor000 = false;  // フラグをリセット
+  } else {
+    // それ以外の場合は空文字で初期化
+    wrapper.vm.$router.push({ query: { parm4: '' } });
+  }
+});
+```
+
+## 🔧 ヘルパー関数の解説
+
+```javascript
+// 設定する年齢の西暦を取得する関数
+function getDateToSet(setAge) {
+  // 現在の西暦を取得
+  const currentYear = new Date().getFullYear();
+  
+  // 設定する年齢の西暦を計算（現在年 - 年齢）
+  const setYear = String(currentYear - setAge)
+  
+  // 生年月日を 'YYYY-01-01' 形式で作成
+  const setDate = setYear + '-01-01'
+  
+  // 西暦と日付の両方を返す
+  return { setYear, setDate };
+}
+```
+
+## 💡 重要なポイント
+
+### 1. **非同期処理の扱い**
+```javascript
+await flushPromises()        // API呼び出し完了まで待機
+await wrapper.vm.$nextTick() // DOM更新完了まで待機
+```
+
+### 2. **モックの活用**
+```javascript
+mockAxios.onPost('/date_calculate/').reply(200, dateCalculate) // APIレスポンスをモック化
+mockGetAgency.mockResolvedValueOnce({...})                     // 関数の戻り値をモック化
+```
+
+### 3. **DOMの操作とテスト**
+```javascript
+wrapper.find('.birthDateYear').setValue(setYear)      // 入力値の設定
+wrapper.find('#month_1').setChecked()                 // チェックボックスの選択
+expect(wrapper.find("input[value='206']").isVisible()).toBe(true) // 表示状態の確認
+```
+
+このテストコードは、実際のユーザー操作をシミュレートして、ビジネスロジックが正しく動作するかを確認する非常に重要なテストです！
